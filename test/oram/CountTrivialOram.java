@@ -13,7 +13,7 @@ public class CountTrivialOram {
 
 	static int newN = 1024*2;
 	public  static void main(String args[]) throws Exception {
-		for(int i = 5; i <=10 ; i++) {
+		for(int i = 5; i <=20 ; i++) {
 			GenRunnable gen = new GenRunnable(12345, i, 3, 32, 4, 8);
 			EvaRunnable eva = new EvaRunnable("localhost", 12345);
 			Thread tGen = new Thread(gen);
@@ -190,3 +190,4 @@ public class CountTrivialOram {
 		}
 	}
 }
+

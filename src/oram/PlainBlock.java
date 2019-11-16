@@ -9,11 +9,16 @@ public class PlainBlock {
 	public boolean[] data;
 	public boolean isDummy;
 
+	public long key;	// `key` in subtree min label
+	public long path;	// `path` in subtree min label
+
 	public PlainBlock(long iden, long pos,  boolean[] data, boolean isDummy) {
 		this.iden = iden;
 		this.pos = pos;
 		this.data = data;
 		this.isDummy = isDummy;
+		this.key = iden;
+		this.path = pos;
 	}
 
 	public boolean[] toBooleanArray(int lengthOfIden, int lengthOfPos) {
