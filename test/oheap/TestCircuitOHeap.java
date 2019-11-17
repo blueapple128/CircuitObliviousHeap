@@ -1,4 +1,4 @@
-package oram;
+package oheap;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -9,10 +9,11 @@ import util.Utils;
 import flexsc.CompEnv;
 import flexsc.Mode;
 import flexsc.Party;
+import oheap.CircuitOHeap;
 
 //import gc.Boolean;
 
-public class TestCircuitOramBasic {
+public class TestCircuitOHeap {
 	final int N = 1 << 6;
 	final int capacity = 3;
 	int[] posMap = new int[N];
@@ -20,7 +21,7 @@ public class TestCircuitOramBasic {
 	int readcount = N * 10;
 	int dataSize = 32;
 
-	public TestCircuitOramBasic() {
+	public TestCircuitOHeap() {
 		SecureRandom rng = new SecureRandom();
 		for (int i = 0; i < posMap.length; ++i)
 			posMap[i] = rng.nextInt(N);
@@ -47,7 +48,7 @@ public class TestCircuitOramBasic {
 				int data[] = new int[N + 1];
 				@SuppressWarnings("unchecked")
 				CompEnv<Boolean> env = CompEnv.getEnv(Mode.VERIFY, Party.Alice, this);
-				CircuitOram<Boolean> client = new CircuitOram<Boolean>(env, N,
+				CircuitOHeap<Boolean> client = new CircuitOHeap<Boolean>(env, N,
 						dataSize, capacity, 80);
 				System.out.println("logN:" + client.logN + ", N:" + client.N);
 
@@ -153,12 +154,12 @@ public class TestCircuitOramBasic {
 			try {
 				connect(host, port);
 
-				// CircuitOramServer<Boolean> server = new
-				// CircuitOramServer<Boolean>(is, os, N, dataSize, Party.Bob,
+				// CircuitOHeapServer<Boolean> server = new
+				// CircuitOHeapServer<Boolean>(is, os, N, dataSize, Party.Bob,
 				// capacity, Mode.REAL, 80);
 				@SuppressWarnings("unchecked")
 				CompEnv<Boolean> env = CompEnv.getEnv(Mode.VERIFY, Party.Bob, this);
-				CircuitOram<Boolean> server = new CircuitOram<Boolean>(env, N,
+				CircuitOHeap<Boolean> server = new CircuitOHeap<Boolean>(env, N,
 						dataSize, capacity, 80);
 
 				for (int i = 0; i < writecount; ++i) {

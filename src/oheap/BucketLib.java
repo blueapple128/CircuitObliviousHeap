@@ -1,5 +1,5 @@
 // Copyright (C) 2014 by Xiao Shaun Wang <wangxiao@cs.umd.edu>
-package oram;
+package oheap;
 
 import circuits.BitonicSortLib;
 import flexsc.CompEnv;

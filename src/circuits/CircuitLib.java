@@ -177,7 +177,7 @@ public class CircuitLib<T> {
 	}
 
 	public T[] xor(T[] x, T[] y) {
-		assert (x != null && y != null && x.length == y.length) : "CircuitLib.xor[]: bad inputs";
+		//assert (x != null && y != null && x.length == y.length) : "CircuitLib.xor[]: bad inputs";
 
 		T[] result = env.newTArray(x.length);
 		for (int i = 0; i < x.length; ++i) {

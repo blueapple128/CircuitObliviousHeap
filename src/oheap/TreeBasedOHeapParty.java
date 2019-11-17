@@ -1,15 +1,15 @@
 // Copyright (C) 2014 by Xiao Shaun Wang <wangxiao@cs.umd.edu>
-package oram;
+package oheap;
 
 import flexsc.CompEnv;
 import flexsc.Mode;
 import flexsc.Party;
 
-public abstract class TreeBasedOramParty<T> extends OramParty<T> {
+public abstract class TreeBasedOHeapParty<T> extends OHeapParty<T> {
 	public PlainBlock[][] tree;
 	protected int capacity;
 
-	public TreeBasedOramParty(CompEnv<T> env, int N, int dataSize, int capacity) {
+	public TreeBasedOHeapParty(CompEnv<T> env, int N, int dataSize, int capacity) {
 		super(env, N, dataSize);
 		this.capacity = capacity;
 

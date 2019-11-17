@@ -1,16 +1,16 @@
 // Copyright (C) 2014 by Xiao Shaun Wang <wangxiao@cs.umd.edu>
-package oram;
+package oheap;
 
 import util.Utils;
 import flexsc.CompEnv;
 import flexsc.Party;
 
-public class CircuitOramLib<T> extends BucketLib<T> {
+public class CircuitOHeapLib<T> extends BucketLib<T> {
 	int logN;
 	int loglogN;
 	int capacity;
 
-	public CircuitOramLib(int lengthOfIden, int lengthOfPos, int lengthOfData,
+	public CircuitOHeapLib(int lengthOfIden, int lengthOfPos, int lengthOfData,
 			int logN, int capacity, CompEnv<T> e) {
 		super(lengthOfIden, lengthOfPos, lengthOfData, e);
 		this.logN = logN;

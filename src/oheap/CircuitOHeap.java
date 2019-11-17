@@ -1,13 +1,13 @@
 // Copyright (C) 2014 by Xiao Shaun Wang <wangxiao@cs.umd.edu>
-package oram;
+package oheap;
 
 import java.util.Arrays;
 
 import flexsc.CompEnv;
 import flexsc.Party;
 
-public class CircuitOram<T> extends TreeBasedOramParty<T> {
-	public CircuitOramLib<T> lib;
+public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
+	public CircuitOHeapLib<T> lib;
 	Block<T>[] scQueue;
 	int cnt = 0;
 	public PlainBlock[] queue;
@@ -24,9 +24,9 @@ public class CircuitOram<T> extends TreeBasedOramParty<T> {
 		return res;
 	}
 
-	public CircuitOram(CompEnv<T> env, int N, int dataSize, int cap, int sp) {
+	public CircuitOHeap(CompEnv<T> env, int N, int dataSize, int cap, int sp) {
 		super(env, N, dataSize, cap);
-		lib = new CircuitOramLib<T>(lengthOfIden, lengthOfPos, lengthOfData,
+		lib = new CircuitOHeapLib<T>(lengthOfIden, lengthOfPos, lengthOfData,
 				logN, capacity, env);
 		queueCapacity = 30;
 		queue = new PlainBlock[queueCapacity];
@@ -37,9 +37,9 @@ public class CircuitOram<T> extends TreeBasedOramParty<T> {
 		scQueue = prepareBlocks(queue, queue);
 	}
 
-	public CircuitOram(CompEnv<T> env, int N, int dataSize) {
+	public CircuitOHeap(CompEnv<T> env, int N, int dataSize) {
 		super(env, N, dataSize, 3);
-		lib = new CircuitOramLib<T>(lengthOfIden, lengthOfPos, lengthOfData,
+		lib = new CircuitOHeapLib<T>(lengthOfIden, lengthOfPos, lengthOfData,
 				logN, capacity, env);
 		queueCapacity = 30;
 		queue = new PlainBlock[queueCapacity];

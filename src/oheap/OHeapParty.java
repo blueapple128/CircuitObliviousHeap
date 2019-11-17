@@ -1,5 +1,5 @@
 // Copyright (C) 2014 by Xiao Shaun Wang <wangxiao@cs.umd.edu>
-package oram;
+package oheap;
 
 import java.util.Arrays;
 
@@ -8,7 +8,7 @@ import flexsc.CompEnv;
 import flexsc.Mode;
 import flexsc.Party;
 
-public abstract class OramParty<T> {
+public abstract class OHeapParty<T> {
 	public int N;
 	int dataSize;
 
@@ -42,7 +42,7 @@ public abstract class OramParty<T> {
 		lengthOfData = dataSize;
 		lengthOfIden = logN;
 	}
-	public OramParty(CompEnv<T> env, int N, int dataSize) {
+	public OHeapParty(CompEnv<T> env, int N, int dataSize) {
 		setParameters(env, N, dataSize);
 		lengthOfPos = logN - 1;
 		p = env.party;
@@ -51,7 +51,7 @@ public abstract class OramParty<T> {
 
 	}
 
-	public OramParty(CompEnv<T> env, int N, int dataSize, int lengthOfPos) {
+	public OHeapParty(CompEnv<T> env, int N, int dataSize, int lengthOfPos) {
 		setParameters(env, N, dataSize);
 		this.lengthOfPos = lengthOfPos;
 		p = env.party;
