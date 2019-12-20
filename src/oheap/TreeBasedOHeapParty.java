@@ -8,6 +8,7 @@ import flexsc.Party;
 public abstract class TreeBasedOHeapParty<T> extends OHeapParty<T> {
 	public PlainBlock[][] tree;
 	protected int capacity;
+	public Block<T>[] subtree_mins;
 
 	public TreeBasedOHeapParty(CompEnv<T> env, int N, int dataSize, int capacity) {
 		super(env, N, dataSize);
@@ -22,8 +23,57 @@ public abstract class TreeBasedOHeapParty<T> extends OHeapParty<T> {
 				for (int j = 0; j < capacity; ++j)
 					tree[i][j] = b;
 		}
+		
+		PlainBlock[] temp_plain_subtree_mins = new PlainBlock[this.N];
+		for (int i = 0; i < this.N; i++) {
+			temp_plain_subtree_mins[i] = getDummyBlock(p == Party.Alice);
+		}
+		subtree_mins = prepareBlocks(temp_plain_subtree_mins, temp_plain_subtree_mins);
 	}
-
+	
+	protected Block<T> blockMin(Block<T> first, Block<T> second) {
+		T firstKeyLess = lib.leq(first.key, second.key);
+		T keysTiedFirstTimestampLess = lib.and(lib.eq(first.key, second.key), lib.leq(first.iden, second.iden));
+		T firstLeqSecond = lib.or(firstKeyLess, keysTiedFirstTimestampLess);
+		T pickFirst = lib.and(lib.or(firstLeqSecond, second.isDummy), lib.not(first.isDummy));
+		
+		return lib.mux(second, first, pickFirst);
+	}
+	
+	/**
+	 * Given a path specified by `path` and a desired level, return the
+	 * corresponding index for `this.tree`.
+	 */
+	private int P(boolean[] path, int level) {
+		if (level == 0) return 1;
+		
+		int ret = 1;
+		for (int i = 1; i <= level; i++) {
+			ret *= 2;
+			if (path[lengthOfPos - i]) {
+				ret++;
+			}
+		}
+		return ret;
+	}
+	
+	protected void updateSubtreeMins(boolean[] path, Block<T>[][] scPath) {
+		for (int l = logN - 1; l >= 0; l--) {
+			Block<T> min = scPath[l][0];
+			for (int i = 1; i < capacity; i++) {
+				min = blockMin(min, scPath[l][i]);
+			}
+			
+			int p = P(path, l);
+			if (l != logN - 1) {
+				min = blockMin(min, subtree_mins[2*p]);
+				min = blockMin(min, subtree_mins[2*p + 1]);
+			}
+			
+			subtree_mins[p] = min;
+		}
+	}
+	
 	protected PlainBlock[][] getPath(boolean[] path) {
 		PlainBlock[][] result = new PlainBlock[logN][];
 		if (env.mode == Mode.COUNT) {

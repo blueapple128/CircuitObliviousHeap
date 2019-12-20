@@ -17,7 +17,7 @@ public class BucketLib<T> extends BitonicSortLib<T> {
 		this.lengthOfIden = lengthOfIden;
 		this.lengthOfPos = lengthOfPos;
 		dummyBlock = new Block<T>(zeros(lengthOfIden), zeros(lengthOfPos),
-				zeros(lengthOfData), SIGNAL_ONE);
+				zeros(Block.LENGTH_OF_KEY), zeros(lengthOfData), SIGNAL_ONE);
 	}
 
 	public T isFull(Block<T>[] bucket) {
@@ -137,17 +137,19 @@ public class BucketLib<T> extends BitonicSortLib<T> {
 	public Block<T> mux(Block<T> a, Block<T> b, T choose) {
 		T[] iden = mux(a.iden, b.iden, choose);
 		T[] pos = mux(a.pos, b.pos, choose);
+		T[] key = mux(a.key, b.key, choose);
 		T[] data = mux(a.data, b.data, choose);
 		T isDummy = mux(a.isDummy, b.isDummy, choose);
-		return new Block<T>(iden, pos, data, isDummy);
+		return new Block<T>(iden, pos, key, data, isDummy);
 	}
 
 	public Block<T> xor(Block<T> a, Block<T> b) {
 		T[] iden = xor(a.iden, b.iden);
 		T[] pos = xor(a.pos, b.pos);
+		T[] key = xor(a.key, b.key);
 		T[] data = xor(a.data, b.data);
 		T isDummy = xor(a.isDummy, b.isDummy);
-		return new Block<T>(iden, pos, data, isDummy);
+		return new Block<T>(iden, pos, key, data, isDummy);
 	}
 
 	public Block<T>[] xor(Block<T>[] a, Block<T>[] b) {
@@ -170,7 +172,7 @@ public class BucketLib<T> extends BitonicSortLib<T> {
 	}
 
 	public Block<T> copy(Block<T> b) {
-		return new Block<T>(b.iden, b.pos, b.data, b.isDummy);
+		return new Block<T>(b.iden, b.pos, b.key, b.data, b.isDummy);
 	}
 
 	@SuppressWarnings("unchecked")

@@ -12,19 +12,24 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 	int cnt = 0;
 	public PlainBlock[] queue;
 	public int queueCapacity;
-
-	boolean[] nextPath() {
+	
+	T[] timestamp;  // number of ops performed so far
+	boolean typeHidingSecurity;
+	
+	boolean[] posToPath(int pos) {
 		boolean[] res = new boolean[logN];
-		int temp = cnt;
 		for (int i = res.length - 1; i >= 0; --i) {
-			res[i] = (temp & 1) == 1;
-			temp >>= 1;
+			res[i] = (pos & 1) == 1;
+			pos >>= 1;
 		}
-		cnt = (cnt + 1) % N;
 		return res;
 	}
+	
+	boolean[] randomPath() {
+		return posToPath(CompEnv.rnd.nextInt(N));
+	}
 
-	public CircuitOHeap(CompEnv<T> env, int N, int dataSize, int cap, int sp) {
+	public CircuitOHeap(CompEnv<T> env, int N, int dataSize, int cap, int sp, boolean typeHidingSecurity) {
 		super(env, N, dataSize, cap);
 		lib = new CircuitOHeapLib<T>(lengthOfIden, lengthOfPos, lengthOfData,
 				logN, capacity, env);
@@ -35,6 +40,10 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 			queue[i] = getDummyBlock(p == Party.Alice);
 
 		scQueue = prepareBlocks(queue, queue);
+		
+		timestamp = lib.zeros(lengthOfIden);
+		
+		this.typeHidingSecurity = typeHidingSecurity;
 	}
 
 	public CircuitOHeap(CompEnv<T> env, int N, int dataSize) {
@@ -49,13 +58,20 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 
 		scQueue = prepareBlocks(queue, queue);
 
+		timestamp = lib.zeros(lengthOfIden);
 	}
 
 	protected void ControlEviction() {
-		flushOneTime(nextPath());
-		flushOneTime(nextPath());
+		boolean[] randomPathOne = randomPath();
+		boolean[] randomPathTwo = randomPath();
+		// force the paths to be non-overlapping
+		randomPathOne[logN - 1] = true;
+		randomPathTwo[logN - 1] = false;
+		
+		flushOneTime(randomPathOne);
+		flushOneTime(randomPathTwo);
 	}
-
+	
 	public void flushOneTime(boolean[] pos) {
 		PlainBlock[][] blocks = getPath(pos);
 		Block<T>[][] scPath = preparePath(blocks, blocks);
@@ -64,13 +80,23 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 
 		blocks = preparePlainPath(scPath);
 		putPath(blocks, pos);
+		
+		updateSubtreeMins(pos, scPath);
 	}
 
 	int initalValue = 0;
 	public void setInitialValue(int intial) {
 		initalValue = intial;
 	}
-	public T[] readAndRemove(T[] scIden, boolean[] pos,
+	
+	private Block<T> dummyBlock() {
+		return new Block<T>(lib.toSignals(initalValue, lengthOfIden),
+			lib.toSignals(initalValue, lengthOfPos),
+			lib.toSignals(initalValue, Block.LENGTH_OF_KEY),
+			lib.toSignals(initalValue, lengthOfData), lib.SIGNAL_ONE);
+	}
+	
+	public Block<T> readAndRemove(T[] scIden, boolean[] pos,
 			boolean RandomWhenNotFound) {
 		PlainBlock[][] blocks = getPath(pos);
 		Block<T>[][] scPath = preparePath(blocks, blocks);
@@ -87,48 +113,124 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 			Block<T> scb = inputBlockOfClient(b);
 			Block<T> finalRes = lib.mux(res, scb, res.isDummy);
 
-			return finalRes.data;
+			return finalRes;
 		} else {
-			return lib.mux(res.data, lib.toSignals(initalValue, res.data.length), res.isDummy);
+			return lib.mux(res, dummyBlock(), res.isDummy);
 		}
 	}
 
-	public void putBack(T[] scIden, T[] scNewPos, T[] scData) {
-		Block<T> b = new Block<T>(scIden, scNewPos, scData, lib.SIGNAL_ZERO);
+	public Block<T> putBack(T[] scIden, T[] scNewPos, T[] scKey, T[] scData) {
+		Block<T> b = new Block<T>(scIden, scNewPos, scKey, scData, lib.SIGNAL_ZERO);
 		lib.add(scQueue, b);
 
 		env.flush();
 		ControlEviction();
-	}
-
-	public T[] read(T[] scIden, boolean[] pos, T[] scNewPos) {
-		scIden = Arrays.copyOf(scIden, lengthOfIden);
-		T[] r = readAndRemove(scIden, pos, false);
-		putBack(scIden, scNewPos, r);
-		return r;
-	}
-
-	public void write(T[] scIden, boolean[] pos, T[] scNewPos, T[] scData)  {
-		scIden = Arrays.copyOf(scIden, lengthOfIden);
-		readAndRemove(scIden, pos, false);
-		putBack(scIden, scNewPos, scData);
+		
+		return b;
 	}
 	
-	public void write(T[] scIden, T[] pos, T[] scNewPos, T[] scData, T dummy)  {
-		scIden = Arrays.copyOf(scIden, lengthOfIden);
-		conditionalReadAndRemove(scIden, pos, dummy);
-		conditionalPutBack(scIden, scNewPos, scData, dummy);
+	public Block<T> findMin() {
+		Block<T> ret = onlyFindMin();
+		
+		if (typeHidingSecurity) {
+			onlyDelete(lib.toSignals(initalValue, lengthOfIden),
+					lib.toSignals(initalValue, lengthOfPos), lib.SIGNAL_ONE);
+			onlyInsert(lib.toSignals(initalValue, Block.LENGTH_OF_KEY),
+					lib.toSignals(initalValue, lengthOfData), lib.SIGNAL_ONE);
+		}
+		
+		return ret;
+	}
+	
+	public Block<T> delete(T[] scIden, T[] pos) {
+		if (typeHidingSecurity) {
+			onlyFindMin();
+		}
+		
+		Block<T> ret = onlyDelete(scIden, pos, lib.SIGNAL_ZERO);
+		
+		if (typeHidingSecurity) {
+			onlyInsert(lib.toSignals(initalValue, Block.LENGTH_OF_KEY),
+					lib.toSignals(initalValue, lengthOfData), lib.SIGNAL_ONE);
+		}
+		
+		timestamp = lib.incrementByOne(timestamp);
+		return ret;
+	}
+	
+	/** Returns a copy of the inserted block (so caller will know its pos and iden) */
+	public Block<T> insert(T[] scKey, T[] scData) {
+		if (typeHidingSecurity) {
+			onlyFindMin();
+			onlyDelete(lib.toSignals(initalValue, lengthOfIden),
+					lib.toSignals(initalValue, lengthOfPos), lib.SIGNAL_ONE);
+		}
+		
+		Block<T> ret = onlyInsert(scKey, scData, lib.SIGNAL_ZERO);
+		
+		timestamp = lib.incrementByOne(timestamp);
+		return ret;
+	}
+	
+	public Block<T> extractMin() {
+		Block<T> minBlock = onlyFindMin();
+		Block<T> ret = onlyDelete(minBlock.iden, minBlock.pos, lib.SIGNAL_ZERO);
+		
+		if (typeHidingSecurity) {
+			onlyInsert(lib.toSignals(initalValue, Block.LENGTH_OF_KEY),
+					lib.toSignals(initalValue, lengthOfData), lib.SIGNAL_ONE);
+		}
+		
+		timestamp = lib.incrementByOne(timestamp);
+		return ret;
+	}
+	
+	public Block<T> decreaseKey(T[] scIden, T[] pos) {
+		if (typeHidingSecurity) {
+			onlyFindMin();
+		}
+		
+		Block<T> oldBlock = onlyDelete(scIden, pos, lib.SIGNAL_ZERO);
+		Block<T> ret = onlyInsert(lib.decrementByOne(oldBlock.key), oldBlock.data, lib.SIGNAL_ZERO);
+		
+		timestamp = lib.incrementByOne(timestamp);
+		return ret;
+	}
+	
+	public Block<T> increaseKey(T[] scIden, T[] pos) {
+		if (typeHidingSecurity) {
+			onlyFindMin();
+		}
+		
+		Block<T> oldBlock = delete(scIden, pos);
+		Block<T> ret = insert(lib.incrementByOne(oldBlock.key), oldBlock.data);
+		
+		timestamp = lib.incrementByOne(timestamp);
+		return ret;
+	}
+	
+	private Block<T> onlyFindMin() {
+		Block<T> min = subtree_mins[1];
+		for (Block<T> b : scQueue) {
+			min = blockMin(min, b);
+		}
+		return min;
+	}
+	
+	private Block<T> onlyDelete(T[] scIden, T[] pos, T dummy) {
+		Block<T> ret = conditionalReadAndRemove(scIden, pos, lib.not(dummy));
+		flushOneTime(lib.declassifyToBoth(pos));
+		return ret;
+	}
+	
+	private Block<T> onlyInsert(T[] scKey, T[] scData, T dummy) {
+		T[] randLeaf = lib.randBools(lengthOfPos);
+		Block<T> ret = conditionalPutBack(timestamp, randLeaf, scKey, scData, lib.not(dummy));
+		
+		return ret;
 	}
 
-	public T[] access(T[] scIden, boolean[] pos, T[] scNewPos, T[] scData, T op) {
-		scIden = Arrays.copyOf(scIden, lengthOfIden);
-		T[] r = readAndRemove(scIden, pos, false);
-		T[] toWrite = lib.mux(r, scData, op);
-		putBack(scIden, scNewPos, toWrite);
-		return toWrite;
-	}
-
-	public T[] conditionalReadAndRemove(T[] scIden, T[] pos, T condition) {
+	public Block<T> conditionalReadAndRemove(T[] scIden, T[] pos, T condition) {
 		// Utils.print(env, "rar: iden:", scIden, pos, condition);
 		scIden = Arrays.copyOf(scIden, lengthOfIden);
 		T[] scPos = Arrays.copyOf(pos, lengthOfPos);
@@ -148,17 +250,19 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 		blocks = preparePlainPath(scPath);
 		putPath(blocks, path);
 		env.flush();
-		return lib.mux(res.data, lib.toSignals(initalValue, res.data.length), res.isDummy);
+		return lib.mux(res, dummyBlock(), res.isDummy);
 	}
 
-	public void conditionalPutBack(T[] scIden, T[] scNewPos, T[] scData,
+	public Block<T> conditionalPutBack(T[] scIden, T[] scNewPos, T[] scKey, T[] scData,
 			T condition) {
 		env.flush();
 		scIden = Arrays.copyOf(scIden, lengthOfIden);
 
-		Block<T> b = new Block<T>(scIden, scNewPos, scData, lib.SIGNAL_ZERO);
+		Block<T> b = new Block<T>(scIden, scNewPos, scKey, scData, lib.SIGNAL_ZERO);
 		lib.conditionalAdd(scQueue, b, condition);
 		env.flush();
 		ControlEviction();
+		
+		return b;
 	}
 }

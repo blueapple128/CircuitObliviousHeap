@@ -69,7 +69,7 @@ public abstract class OHeapParty<T> {
 		boolean[] data = new boolean[lengthOfData];
 		for (int i = 0; i < lengthOfData; ++i)
 			data[i] = true;
-		pb_for_count_mode = new PlainBlock(0, 0, data, false);
+		pb_for_count_mode = new PlainBlock(0, 0, Long.MAX_VALUE, data, false);
 
 	}
 
@@ -110,7 +110,7 @@ public abstract class OHeapParty<T> {
 
 	public Block<T>[] toBlocks(T[] Tarray, int lengthOfIden, int lengthOfPos,
 			int lengthOfData, int capacity) {
-		int blockSize = lengthOfIden + lengthOfPos + lengthOfData + 1;
+		int blockSize = lengthOfIden + lengthOfPos + lengthOfData + Block.LENGTH_OF_KEY + 1;
 		Block<T>[] result = lib.newBlockArray(capacity);
 		for (int i = 0; i < capacity; ++i) {
 			result[i] = new Block<T>(Arrays.copyOfRange(Tarray, i * blockSize,
@@ -137,10 +137,11 @@ public abstract class OHeapParty<T> {
 	public PlainBlock outputBlock(Block<T> b) {
 		boolean[] iden = env.outputToAlice(b.iden);
 		boolean[] pos = env.outputToAlice(b.pos);
+		boolean[] key = env.outputToAlice(b.key);
 		boolean[] data = env.outputToAlice(b.data);
 		boolean isDummy = env.outputToAlice(b.isDummy);
 
-		return new PlainBlock(Utils.toLong(iden), Utils.toLong(pos), data, isDummy);
+		return new PlainBlock(Utils.toLong(iden), Utils.toLong(pos), Utils.toLong(key), data, isDummy);
 	}
 
 	public PlainBlock[] outputBucket(Block<T>[] b) {
@@ -167,7 +168,7 @@ public abstract class OHeapParty<T> {
 
 		for (int i = 0; i < lengthOfData; ++i)
 			data[i] = true;
-		return new PlainBlock(0, 0, data, b);
+		return new PlainBlock(0, 0, Long.MAX_VALUE, data, b);
 	}
 
 	PlainBlock r = getDummyBlock(true);
@@ -185,7 +186,7 @@ public abstract class OHeapParty<T> {
 		for (int i = 0; i < lengthOfData; ++i)
 			data[i] = CompEnv.rnd.nextBoolean();
 		boolean isDummy = CompEnv.rnd.nextBoolean();
-		return new PlainBlock(CompEnv.rnd.nextLong(), CompEnv.rnd.nextLong(), data, isDummy);
+		return new PlainBlock(CompEnv.rnd.nextLong(), CompEnv.rnd.nextLong(), CompEnv.rnd.nextLong(), data, isDummy);
 	}
 
 	public PlainBlock[] randomBucket(int length) {

@@ -2,13 +2,16 @@ package oheap;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.PriorityQueue;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import util.Utils;
 import flexsc.CompEnv;
 import flexsc.Mode;
 import flexsc.Party;
+import oheap.Block;
 import oheap.CircuitOHeap;
 
 //import gc.Boolean;
@@ -16,20 +19,41 @@ import oheap.CircuitOHeap;
 public class TestCircuitOHeap {
 	final int N = 1 << 6;
 	final int capacity = 3;
-	int[] posMap = new int[N];
-	int writecount = N;
-	int readcount = N * 10;
 	int dataSize = 32;
-
+	
+	PriorityQueue<Long> regularHeap = new PriorityQueue<>();
+	int[] ops = new int[1000];
+	
+	public static void main(String[] args) throws Exception {
+		new TestCircuitOHeap().runThreads();
+	}
+	
 	public TestCircuitOHeap() {
 		SecureRandom rng = new SecureRandom();
-		for (int i = 0; i < posMap.length; ++i)
-			posMap[i] = rng.nextInt(N);
+		
+		// run a large number of random operations on both the OHeap and a regular heap, comparing them
+		// 0 = extractMin
+		// 1,2 = insert
+		// bias insert over extractMin so the heap eventually fills up
+		// but never dequeue when empty or enqueue when full
+		int imbalance = 0;
+		for (int i = 0; i < ops.length; i++) {
+			if (imbalance == 0) {
+				ops[i] = 1;
+				imbalance++;
+			} else if (imbalance == N) {
+				ops[i] = 0;
+				imbalance--;
+			} else {
+				ops[i] = rng.nextInt(3);
+				if (ops[i] == 0) { imbalance--; } else { imbalance++; }
+			}
+		}
 	}
 
 	SecureRandom rng = new SecureRandom();
 	boolean breaksignal = false;
-
+	
 	class GenRunnable extends network.Server implements Runnable {
 		int port;
 
@@ -45,68 +69,50 @@ public class TestCircuitOHeap {
 			try {
 				listen(port);
 
-				int data[] = new int[N + 1];
 				@SuppressWarnings("unchecked")
 				CompEnv<Boolean> env = CompEnv.getEnv(Mode.VERIFY, Party.Alice, this);
 				CircuitOHeap<Boolean> client = new CircuitOHeap<Boolean>(env, N,
-						dataSize, capacity, 80);
+						dataSize, capacity, 80, false);
 				System.out.println("logN:" + client.logN + ", N:" + client.N);
 
-				for (int i = 0; i < writecount; ++i) {
-					int element = i % N;
-
-					int oldValue = posMap[element];
-					int newValue = rng.nextInt(1 << client.lengthOfPos);
-					System.out.println(element + " " + oldValue + " "
-							+ newValue);
-					data[element] = 2 * element + 1;
-					// long t1 = System.currentTimeMillis();
-					Boolean[] scNewValue = client.env.inputOfAlice(Utils
-							.fromInt(newValue, client.lengthOfPos));
-					Boolean[] scData = client.env.inputOfAlice(Utils.fromInt(
-							data[element], client.lengthOfData));
-					client.write(client.lib.toSignals(element),
-							Utils.fromInt(oldValue, client.lengthOfPos),
-							scNewValue, scData);
-					System.out.println(client.toString());
-
-					os.write(0);
-					posMap[element] = newValue;
-					os.flush();
-
-					// long t2 = System.currentTimeMillis() - t1;
-					Runtime rt = Runtime.getRuntime();
-					double usedMB = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0;
-					System.out.println("mem: " + usedMB);
-
-					posMap[element] = newValue;
-				}
-
-				for (int i = 0; i < readcount; ++i) {
-					int element = i % N;
-					int oldValue = posMap[element];
-					int newValue = rng.nextInt(1 << client.lengthOfPos);
-					System.out.println(element + " " + oldValue + " "
-							+ newValue);
-
-					Boolean[] scNewValue = client.env.inputOfAlice(Utils
-							.fromInt(newValue, client.lengthOfPos));
-					Boolean[] scb = client.read(client.lib.toSignals(element),
-							Utils.fromInt(oldValue, client.lengthOfPos),
-							scNewValue);
-
-					boolean[] b = client.env.outputToAlice(scb);
-					os.write(0);
-					posMap[element] = newValue;
-					os.flush();
-
-					// Assert.assertTrue(Utils.toInt(b.data) == data[element]);
-					if (Utils.toInt(b) != data[element]) {
-						System.out.println("inconsistent: " + element + " "
-								+ Utils.toInt(b) + " " + data[element] + " "
-								+ posMap[element]);
+				for (int i = 0; i < ops.length; ++i) {
+					if (ops[i] != 0) {
+						long key = rng.nextInt(1000000);
+						Boolean[] scKey = client.env.inputOfAlice(Utils.fromLong(
+								key, Block.LENGTH_OF_KEY));
+						Boolean[] scData = client.env.inputOfAlice(Utils.fromLong(
+								2*key + 1, client.lengthOfData));
+						client.insert(scKey, scData);
+						regularHeap.add(key);
+	
+						os.write(0);
+						os.flush();
+	
+						//Runtime rt = Runtime.getRuntime();
+						//double usedMB = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0;
+						//System.out.println("mem: " + usedMB);
+						
+						System.out.printf("Inserted %d\n", key);
+					} else {
+						Block<Boolean> blk = client.extractMin();
+					    long key = Utils.toLong(client.env.outputToAlice(blk.key));
+						int data = Utils.toInt(client.env.outputToAlice(blk.data));
+						long regularKey = regularHeap.poll();
+						
+						os.write(0);
+						os.flush();
+						
+						if (key != regularKey) {
+							System.out.printf("Error! Keys %d and %d don't match!\n", key, regularKey);
+							Assert.fail();
+						} else {
+							System.out.printf("%d and %d match\n", key, regularKey);
+						}
+						if (2*key + 1 != data) {
+							System.out.printf("Error! Key %d doesn't match data %d\n", key, data);
+							Assert.fail();
+						}
 					}
-
 				}
 
 				idens = new int[client.tree.length][];
@@ -154,41 +160,24 @@ public class TestCircuitOHeap {
 			try {
 				connect(host, port);
 
-				// CircuitOHeapServer<Boolean> server = new
-				// CircuitOHeapServer<Boolean>(is, os, N, dataSize, Party.Bob,
-				// capacity, Mode.REAL, 80);
 				@SuppressWarnings("unchecked")
 				CompEnv<Boolean> env = CompEnv.getEnv(Mode.VERIFY, Party.Bob, this);
 				CircuitOHeap<Boolean> server = new CircuitOHeap<Boolean>(env, N,
-						dataSize, capacity, 80);
+						dataSize, capacity, 80, false);
 
-				for (int i = 0; i < writecount; ++i) {
-					int element = i % N;
-					int oldValue = posMap[element];
-					Boolean[] scNewValue = server.env
-							.inputOfAlice(new boolean[server.lengthOfPos]);
-					Boolean[] scData = server.env
-							.inputOfAlice(new boolean[server.lengthOfData]);
-
-					server.write(server.lib.toSignals(element),
-							Utils.fromInt(oldValue, server.lengthOfPos),
-							scNewValue, scData);
-					server.toString();
-
-					// server.access(oldValue);
-					is.read();
-				}
-
-				for (int i = 0; i < readcount; ++i) {
-					int element = i % N;
-					int oldValue = posMap[element];
-					Boolean[] scNewValue = server.env
-							.inputOfAlice(new boolean[server.lengthOfPos]);
-					Boolean[] scb = server.read(server.lib.toSignals(element),
-							Utils.fromInt(oldValue, server.lengthOfPos),
-							scNewValue);
-
-					server.env.outputToAlice(scb);
+				for (int i = 0; i < ops.length; ++i) {
+					if (ops[i] != 0) {
+						Boolean[] scKey = server.env
+								.inputOfAlice(new boolean[Block.LENGTH_OF_KEY]);
+						Boolean[] scData = server.env
+								.inputOfAlice(new boolean[server.lengthOfData]);
+						
+						server.insert(scKey, scData);
+					} else {
+						Block<Boolean> blk = server.extractMin();
+						server.env.outputToAlice(blk.key);
+						server.env.outputToAlice(blk.data);
+					}
 					is.read();
 				}
 
