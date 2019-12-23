@@ -40,7 +40,9 @@ public abstract class OHeapParty<T> {
 
 		this.N = 1 << logN;
 		lengthOfData = dataSize;
-		lengthOfIden = logN;
+		// sizeof long; unlike oram must be unique among all operations ever performed on the heap,
+		// not just unique among all items in the structure
+		lengthOfIden = 64;
 	}
 	public OHeapParty(CompEnv<T> env, int N, int dataSize) {
 		setParameters(env, N, dataSize);

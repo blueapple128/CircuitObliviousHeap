@@ -5,11 +5,11 @@ import java.util.Arrays;
 
 import flexsc.CompEnv;
 import flexsc.Party;
+import util.Utils;
 
 public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 	public CircuitOHeapLib<T> lib;
 	Block<T>[] scQueue;
-	int cnt = 0;
 	public PlainBlock[] queue;
 	public int queueCapacity;
 	
@@ -26,7 +26,7 @@ public class CircuitOHeap<T> extends TreeBasedOHeapParty<T> {
 	}
 	
 	boolean[] randomPath() {
-		return posToPath(CompEnv.rnd.nextInt(N));
+		return Utils.tobooleanArray((Boolean[])lib.randBools(logN));
 	}
 
 	public CircuitOHeap(CompEnv<T> env, int N, int dataSize, int cap, int sp, boolean typeHidingSecurity) {

@@ -92,7 +92,7 @@ public class TestCircuitOHeap {
 						//double usedMB = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0;
 						//System.out.println("mem: " + usedMB);
 						
-						System.out.printf("Inserted %d\n", key);
+						System.out.printf("t=%d: Inserted %d\n", i, key);
 					} else {
 						Block<Boolean> blk = client.extractMin();
 					    long key = Utils.toLong(client.env.outputToAlice(blk.key));
@@ -106,7 +106,7 @@ public class TestCircuitOHeap {
 							System.out.printf("Error! Keys %d and %d don't match!\n", key, regularKey);
 							Assert.fail();
 						} else {
-							System.out.printf("%d and %d match\n", key, regularKey);
+							System.out.printf("t=%d: %d and %d match\n", i, key, regularKey);
 						}
 						if (2*key + 1 != data) {
 							System.out.printf("Error! Key %d doesn't match data %d\n", key, data);
